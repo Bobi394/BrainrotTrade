@@ -52,6 +52,32 @@
   h1 {
     margin-top: 20px;
   }
+  /* 🧠 Detail-Popup */
+  #popup {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+  }
+  #popup-content {
+    background: #2c2c44;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+  }
+  #offers {
+    margin-top: 30px;
+    background: #2c2c44;
+    padding: 15px;
+    border-radius: 10px;
+    max-width: 600px;
+    margin-inline: auto;
+  }
 </style>
 </head>
 <body>
@@ -70,9 +96,28 @@
 <h2>🧠 Unsere Brainrots</h2>
 <div id="brainrot-list" class="grid">Lade Brainrots...</div>
 
+<!-- 🧩 Detail-Popup -->
+<div id="popup">
+  <div id="popup-content">
+    <h3 id="popup-name"></h3>
+    <img id="popup-img" width="150">
+    <p><em id="popup-rarity"></em></p>
+    <p><strong>Stock:</strong> <span id="popup-stock"></span></p>
+    <div id="offer-section">
+      <input type="text" id="popup-username" placeholder="Roblox Username"><br>
+      <textarea id="popup-offertext" placeholder="Dein Angebot" rows="2" cols="28"></textarea><br>
+      <button id="popup-send">📩 Angebot senden</button>
+    </div>
+    <button onclick="closePopup()">❌ Schließen</button>
+  </div>
+</div>
+
+<h2>📜 Deine Angebote</h2>
+<div id="offers">Bitte anmelden...</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -95,6 +140,7 @@ const passwordInput = document.getElementById("password");
 const loginBtn = document.getElementById("login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const userInfo = document.getElementById("user-info");
+const offersDiv = document.getElementById("offers");
 
 // 🔐 Login / Logout
 loginBtn.addEventListener("click", async () => {
@@ -114,14 +160,17 @@ onAuthStateChanged(auth, (user) => {
     logoutBtn.style.display = "inline-block";
     emailInput.style.display = "none";
     passwordInput.style.display = "none";
+    ladeBrainrots();
+    ladeEigeneAngebote();
   } else {
     userInfo.textContent = "Nicht eingeloggt";
     loginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
     emailInput.style.display = "inline-block";
     passwordInput.style.display = "inline-block";
+    brainrotList.innerHTML = "";
+    offersDiv.innerHTML = "Bitte anmelden...";
   }
-  ladeBrainrots();
 });
 
 // 🧠 Brainrots laden
@@ -129,7 +178,6 @@ async function ladeBrainrots() {
   brainrotList.innerHTML = "Lade...";
   const snapshot = await getDocs(collection(db, "brainrots"));
   brainrotList.innerHTML = "";
-
   snapshot.forEach(docSnap => {
     const data = docSnap.data();
     const div = document.createElement("div");
@@ -137,31 +185,30 @@ async function ladeBrainrots() {
     div.innerHTML = `
       <strong>${data.name}</strong><br>
       <em>Rarity:</em> ${data.rarity || "Unbekannt"}<br>
-      <em>Stock:</em> ${data.stock ?? 0}<br>
       <img src="${data.imageUrl || 'https://placehold.co/120x120'}" width="120"><br>
+      <button onclick="openPopup('${docSnap.id}','${data.name}','${data.imageUrl}','${data.rarity}','${data.stock ?? 0}')">ℹ️ Details</button>
     `;
-
-    if (data.stock > 0) {
-      div.innerHTML += `
-        <input type="text" id="user-${docSnap.id}" placeholder="Roblox Username"><br>
-        <textarea id="offer-${docSnap.id}" placeholder="Dein Angebot" rows="2" cols="28"></textarea><br>
-        <button onclick="sendOffer('${docSnap.id}')">📩 Angebot senden</button>
-      `;
-    } else {
-      div.innerHTML += `<p>❌ Nicht verfügbar</p>`;
-    }
-
     brainrotList.appendChild(div);
   });
 }
 
+// 🪄 Popup öffnen
+window.openPopup = function(id,name,img,rarity,stock){
+  document.getElementById("popup-name").textContent = name;
+  document.getElementById("popup-img").src = img;
+  document.getElementById("popup-rarity").textContent = rarity;
+  document.getElementById("popup-stock").textContent = stock;
+  document.getElementById("popup").style.display = "flex";
+  document.getElementById("popup-send").onclick = () => sendOffer(id);
+};
+window.closePopup = function(){ document.getElementById("popup").style.display = "none"; };
+
 // 📤 Angebot senden
-window.sendOffer = async function(id) {
+async function sendOffer(id) {
   const user = auth.currentUser;
   if (!user) { alert("Bitte zuerst anmelden!"); return; }
-
-  const robloxUsername = document.getElementById(`user-${id}`).value.trim();
-  const offerText = document.getElementById(`offer-${id}`).value.trim();
+  const robloxUsername = document.getElementById("popup-username").value.trim();
+  const offerText = document.getElementById("popup-offertext").value.trim();
   if (!robloxUsername || !offerText) { alert("Bitte alles ausfüllen!"); return; }
 
   await addDoc(collection(db, "offers"), {
@@ -174,9 +221,36 @@ window.sendOffer = async function(id) {
   });
 
   alert("✅ Dein Angebot wurde gesendet!");
-  document.getElementById(`user-${id}`).value = "";
-  document.getElementById(`offer-${id}`).value = "";
-};
+  closePopup();
+  ladeEigeneAngebote();
+}
+
+// 📜 Eigene Angebote laden
+async function ladeEigeneAngebote(){
+  const user = auth.currentUser;
+  if(!user) return;
+  offersDiv.innerHTML = "Lade...";
+  const q = query(collection(db,"offers"), where("fromEmail","==",user.email));
+  const snapshot = await getDocs(q);
+  if(snapshot.empty){ offersDiv.innerHTML="Keine Angebote bisher."; return; }
+
+  let html = "";
+  snapshot.forEach(docSnap=>{
+    const o = docSnap.data();
+    let statusIcon = "🕒";
+    if(o.status==="accepted") statusIcon = "✅";
+    else if(o.status==="rejected") statusIcon = "❌";
+    html += `
+      <div style="border-bottom:1px solid #444; padding:5px;">
+        ${statusIcon} <strong>${o.brainrotName || o.brainrotId}</strong><br>
+        <em>${o.offerText}</em><br>
+        Roblox: ${o.robloxUsername}<br>
+        Status: ${o.status || "pending"}
+      </div>
+    `;
+  });
+  offersDiv.innerHTML = html;
+}
 </script>
 
 </body>
