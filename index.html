@@ -5,14 +5,53 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Steal a Brainrot Trade 💸</title>
 <style>
-  body {font-family:Arial;background:#1b1b2a;color:#f5f5f5;text-align:center;}
-  input,button,textarea{padding:8px;margin:5px;border-radius:5px;border:none;}
-  button{cursor:pointer;background:#4e5efc;color:white;}
-  button:hover{background:#6f7bff;}
-  .brainrot{background:#2c2c44;margin:10px auto;padding:10px;width:350px;border-radius:8px;text-align:left;}
-  .outofstock{opacity:0.5;}
-  img{border-radius:8px;}
-  h1{margin-top:20px;}
+  body {
+    font-family: Arial;
+    background: #1b1b2a;
+    color: #f5f5f5;
+    text-align: center;
+  }
+  input, button, textarea {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 5px;
+    border: none;
+  }
+  button {
+    cursor: pointer;
+    background: #4e5efc;
+    color: white;
+  }
+  button:hover {
+    background: #6f7bff;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 15px;
+    justify-items: center;
+    padding: 15px;
+    max-width: 900px;
+    margin: auto;
+  }
+  .brainrot {
+    background: #2c2c44;
+    padding: 10px;
+    border-radius: 10px;
+    width: 90%;
+    text-align: left;
+  }
+  .outofstock {
+    opacity: 0.5;
+  }
+  img {
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto;
+  }
+  h1 {
+    margin-top: 20px;
+  }
 </style>
 </head>
 <body>
@@ -29,108 +68,114 @@
 </div>
 
 <h2>🧠 Unsere Brainrots</h2>
-<div id="brainrot-list">Lade Brainrots...</div>
+<div id="brainrot-list" class="grid">Lade Brainrots...</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-const firebaseConfig={
-  apiKey:"AIzaSyCSGYr4opBpK_G-U7Vs7o5boniVVojClaU",
-  authDomain:"brainrottrade-bada5.firebaseapp.com",
-  projectId:"brainrottrade-bada5",
-  storageBucket:"brainrottrade-bada5.firebasestorage.app",
-  messagingSenderId:"141473188329",
-  appId:"1:141473188329:web:3548a50d851d8807bbe378",
-  measurementId:"G-TJR1CS3SSP"
+const firebaseConfig = {
+  apiKey: "AIzaSyCSGYr4opBpK_G-U7Vs7o5boniVVojClaU",
+  authDomain: "brainrottrade-bada5.firebaseapp.com",
+  projectId: "brainrottrade-bada5",
+  storageBucket: "brainrottrade-bada5.firebasestorage.app",
+  messagingSenderId: "141473188329",
+  appId: "1:141473188329:web:3548a50d851d8807bbe378",
+  measurementId: "G-TJR1CS3SSP"
 };
 
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-const auth=getAuth(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-const brainrotList=document.getElementById("brainrot-list");
-const emailInput=document.getElementById("email");
-const passwordInput=document.getElementById("password");
-const loginBtn=document.getElementById("login-btn");
-const logoutBtn=document.getElementById("logout-btn");
-const userInfo=document.getElementById("user-info");
+const brainrotList = document.getElementById("brainrot-list");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const loginBtn = document.getElementById("login-btn");
+const logoutBtn = document.getElementById("logout-btn");
+const userInfo = document.getElementById("user-info");
 
-loginBtn.addEventListener("click",async()=>{
-  try{
-    await signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value);
+// 🔐 Login / Logout
+loginBtn.addEventListener("click", async () => {
+  try {
+    await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     alert("✅ Login erfolgreich!");
-  }catch(err){alert("❌ "+err.message);}
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
 });
-logoutBtn.addEventListener("click",async()=>{await signOut(auth);});
+logoutBtn.addEventListener("click", async () => { await signOut(auth); });
 
-onAuthStateChanged(auth,(user)=>{
-  if(user){
-    userInfo.textContent=`👤 Eingeloggt als: ${user.email}`;
-    loginBtn.style.display="none";
-    logoutBtn.style.display="inline-block";
-    emailInput.style.display="none";
-    passwordInput.style.display="none";
-  }else{
-    userInfo.textContent="Nicht eingeloggt";
-    loginBtn.style.display="inline-block";
-    logoutBtn.style.display="none";
-    emailInput.style.display="inline-block";
-    passwordInput.style.display="inline-block";
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    userInfo.textContent = `👤 Eingeloggt als: ${user.email}`;
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+    emailInput.style.display = "none";
+    passwordInput.style.display = "none";
+  } else {
+    userInfo.textContent = "Nicht eingeloggt";
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
+    emailInput.style.display = "inline-block";
+    passwordInput.style.display = "inline-block";
   }
   ladeBrainrots();
 });
 
-// Brainrots laden
-async function ladeBrainrots(){
-  brainrotList.innerHTML="Lade...";
-  const snapshot=await getDocs(collection(db,"brainrots"));
-  brainrotList.innerHTML="";
-  snapshot.forEach(docSnap=>{
-    const data=docSnap.data();
-    const div=document.createElement("div");
-    div.className="brainrot"+(data.stock===0?" outofstock":"");
-    div.innerHTML=`
+// 🧠 Brainrots laden
+async function ladeBrainrots() {
+  brainrotList.innerHTML = "Lade...";
+  const snapshot = await getDocs(collection(db, "brainrots"));
+  brainrotList.innerHTML = "";
+
+  snapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    const div = document.createElement("div");
+    div.className = "brainrot" + (data.stock === 0 ? " outofstock" : "");
+    div.innerHTML = `
       <strong>${data.name}</strong><br>
-      <em>Rarity:</em> ${data.rarity||"Unbekannt"}<br>
-      <em>Stock:</em> ${data.stock??0}<br>
-      <img src="${data.imageUrl||'https://placehold.co/120x120'}" width="120"><br>
+      <em>Rarity:</em> ${data.rarity || "Unbekannt"}<br>
+      <em>Stock:</em> ${data.stock ?? 0}<br>
+      <img src="${data.imageUrl || 'https://placehold.co/120x120'}" width="120"><br>
     `;
 
-    if(data.stock>0){
-      div.innerHTML+=`
+    if (data.stock > 0) {
+      div.innerHTML += `
         <input type="text" id="user-${docSnap.id}" placeholder="Roblox Username"><br>
-        <textarea id="offer-${docSnap.id}" placeholder="Dein Angebot" rows="2" cols="30"></textarea><br>
+        <textarea id="offer-${docSnap.id}" placeholder="Dein Angebot" rows="2" cols="28"></textarea><br>
         <button onclick="sendOffer('${docSnap.id}')">📩 Angebot senden</button>
       `;
-    }else{
-      div.innerHTML+=`<p>❌ Nicht verfügbar</p>`;
+    } else {
+      div.innerHTML += `<p>❌ Nicht verfügbar</p>`;
     }
+
     brainrotList.appendChild(div);
   });
 }
 
-// Angebot senden
-window.sendOffer = async function(id){
-  const user=auth.currentUser;
-  if(!user){alert("Bitte zuerst anmelden!");return;}
-  const robloxUsername=document.getElementById(`user-${id}`).value.trim();
-  const offerText=document.getElementById(`offer-${id}`).value.trim();
-  if(!robloxUsername||!offerText){alert("Bitte alles ausfüllen!");return;}
+// 📤 Angebot senden
+window.sendOffer = async function(id) {
+  const user = auth.currentUser;
+  if (!user) { alert("Bitte zuerst anmelden!"); return; }
 
-  await addDoc(collection(db,"offers"),{
-    brainrotId:id,
+  const robloxUsername = document.getElementById(`user-${id}`).value.trim();
+  const offerText = document.getElementById(`offer-${id}`).value.trim();
+  if (!robloxUsername || !offerText) { alert("Bitte alles ausfüllen!"); return; }
+
+  await addDoc(collection(db, "offers"), {
+    brainrotId: id,
     robloxUsername,
     offerText,
-    fromEmail:user.email,
-    status:"pending",
-    createdAt:serverTimestamp()
+    fromEmail: user.email,
+    status: "pending",
+    createdAt: serverTimestamp()
   });
 
   alert("✅ Dein Angebot wurde gesendet!");
-  document.getElementById(`user-${id}`).value="";
-  document.getElementById(`offer-${id}`).value="";
+  document.getElementById(`user-${id}`).value = "";
+  document.getElementById(`offer-${id}`).value = "";
 };
 </script>
 
