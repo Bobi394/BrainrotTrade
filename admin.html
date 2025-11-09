@@ -9,18 +9,18 @@ body { font-family: Arial; background:#1b1b2a; color:#f5f5f5; text-align:center;
 input, button { padding:8px; margin:5px; border-radius:5px; border:none; }
 button { cursor:pointer; background:#4e5efc; color:white; }
 button:hover { background:#6f7bff; }
-#admin-section { margin-top:40px; background:#2c2c44; padding:15px; border-radius:10px; max-width:800px; margin:auto; text-align:left; }
-#offers, #brainrots-list { margin-top:20px; background:#2c2c44; padding:15px; border-radius:10px; max-width:800px; margin:auto; }
-.brainrot-admin { border-bottom:1px solid #444; padding:5px; margin-bottom:5px; }
-.offer-admin { border-bottom:1px solid #444; padding:5px; margin-bottom:5px; }
-input[type=number] { width:80px; }
+#admin-section { margin-top:20px; background:#2c2c44; padding:15px; border-radius:10px; max-width:900px; margin:auto; text-align:left; }
+#offers, #brainrots-list { margin-top:20px; background:#2c2c44; padding:15px; border-radius:10px; max-width:900px; margin:auto; }
+.brainrot-admin, .offer-admin { border-bottom:1px solid #444; padding:5px; margin-bottom:5px; }
+input[type=number] { width:60px; }
+.status-btn { margin:2px; }
+.outofstock { opacity:0.5; }
 </style>
 </head>
 <body>
 
 <h1>🛠️ Steal a Brainrot - Admin Panel 🛠️</h1>
 
-<div id="user-info"></div>
 <div id="auth-box">
   <input type="email" id="email" placeholder="E-Mail">
   <input type="password" id="password" placeholder="Passwort">
@@ -28,179 +28,118 @@ input[type=number] { width:80px; }
   <button id="logout-btn" style="display:none;">Logout</button>
 </div>
 
-<div id="admin-section" style="display:none;">
-  <h2>📜 Alle Angebote</h2>
+<div id="admin-section" style="display:block;">
+  <h2>📜 Angebote</h2>
   <div id="offers">Lade...</div>
 
-  <h2>➕ Brainrots verwalten</h2>
-  <input type="text" id="admin-brainrot-name" placeholder="Name">
-  <input type="text" id="admin-brainrot-rarity" placeholder="Rarity">
-  <input type="text" id="admin-brainrot-img" placeholder="Bild URL">
-  <input type="number" id="admin-brainrot-stock" placeholder="Stock" min="0">
-  <button id="admin-add-brainrot">Erstellen</button>
+  <h2>➕ Brainrots erstellen</h2>
+  <input type="text" id="brainrot-name" placeholder="Name">
+  <input type="text" id="brainrot-rarity" placeholder="Rarity">
+  <input type="text" id="brainrot-img" placeholder="Bild URL">
+  <input type="number" id="brainrot-stock" placeholder="Stock" min="0">
+  <button id="add-brainrot">Erstellen</button>
 
-  <h3>🧠 Bestehende Brainrots bearbeiten</h3>
+  <h2>🧠 Bestehende Brainrots</h2>
   <div id="brainrots-list">Lade...</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-const firebaseConfig = { /* Dein Firebase Config */ };
+const firebaseConfig = { /* Dein Firebase Config hier */ };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const userInfo = document.getElementById("user-info");
-const adminSection = document.getElementById("admin-section");
-const offersDiv = document.getElementById("offers");
-const addBrainrotBtn = document.getElementById("admin-add-brainrot");
-const brainrotsListDiv = document.getElementById("brainrots-list");
+const emailInput=document.getElementById("email");
+const passwordInput=document.getElementById("password");
+const loginBtn=document.getElementById("login-btn");
+const logoutBtn=document.getElementById("logout-btn");
+const offersDiv=document.getElementById("offers");
+const brainrotsListDiv=document.getElementById("brainrots-list");
+const addBrainrotBtn=document.getElementById("add-brainrot");
 
-let brainrotCache = {};
-let currentUser = null;
-
-// 🔐 Login
-loginBtn.addEventListener("click", async () => {
-  try{
-    await signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value);
-  } catch(err){ alert("❌ "+err.message); }
+// Login
+loginBtn.addEventListener("click", async()=>{
+  try{ await signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Eingeloggt!"); loadAll(); } catch(err){ alert(err.message); }
 });
+logoutBtn.addEventListener("click", async()=>{ await signOut(auth); location.reload(); });
 
-// 🔐 Logout
-logoutBtn.addEventListener("click", async()=>{ await signOut(auth); });
-
-// Auth State
-onAuthStateChanged(auth, async (user)=>{
-  if(user){
-    currentUser = user;
-    const token = await user.getIdTokenResult();
-    const isAdmin = token.claims.admin === true;
-    if(!isAdmin){ alert("❌ Du bist kein Admin!"); await signOut(auth); return; }
-    userInfo.textContent = `👤 Admin eingeloggt: ${user.email}`;
-    loginBtn.style.display="none"; logoutBtn.style.display="inline-block";
-    emailInput.style.display="none"; passwordInput.style.display="none";
-    adminSection.style.display="block";
-    ladeOffers(); ladeBrainrots();
-  } else {
-    currentUser = null;
-    userInfo.textContent="Nicht eingeloggt";
-    loginBtn.style.display="inline-block"; logoutBtn.style.display="none";
-    emailInput.style.display="inline-block"; passwordInput.style.display="inline-block";
-    adminSection.style.display="none";
-  }
-});
-
-// ======================
+// ====================
 // Brainrots Funktionen
-// ======================
+// ====================
 
 // Brainrot erstellen
 addBrainrotBtn.addEventListener("click", async()=>{
-  const name = document.getElementById("admin-brainrot-name").value.trim();
-  const rarity = document.getElementById("admin-brainrot-rarity").value.trim();
-  const img = document.getElementById("admin-brainrot-img").value.trim();
-  const stock = parseInt(document.getElementById("admin-brainrot-stock").value)||0;
-  if(!name){ alert("Name fehlt"); return; }
+  const name=document.getElementById("brainrot-name").value.trim();
+  const rarity=document.getElementById("brainrot-rarity").value.trim();
+  const img=document.getElementById("brainrot-img").value.trim();
+  const stock=parseInt(document.getElementById("brainrot-stock").value)||0;
+  if(!name){ alert("Name fehlt!"); return; }
   await addDoc(collection(db,"brainrots"),{name,rarity,imageUrl:img,stock});
-  alert("✅ Brainrot erstellt!");
-  ladeBrainrots();
+  loadBrainrots();
 });
 
 // Alle Brainrots laden
-async function ladeBrainrots(){
+async function loadBrainrots(){
   brainrotsListDiv.innerHTML="Lade...";
-  brainrotCache = {};
-  const snapshot = await getDocs(collection(db,"brainrots"));
+  const snapshot=await getDocs(collection(db,"brainrots"));
   brainrotsListDiv.innerHTML="";
   snapshot.forEach(docSnap=>{
-    const b = docSnap.data();
-    brainrotCache[docSnap.id] = b;
-    const div = document.createElement("div");
-    div.className="brainrot-admin";
-    div.innerHTML = `
-      <strong>${b.name}</strong> | Rarity: ${b.rarity} | Stock: <input type="number" value="${b.stock}" min="0" id="stock-${docSnap.id}" style="width:60px;">
-      <br>Bild URL: <input type="text" value="${b.imageUrl||''}" id="img-${docSnap.id}" style="width:300px;">
-      <br><button onclick="updateBrainrot('${docSnap.id}')">💾 Speichern</button>
-      <button onclick="deleteBrainrot('${docSnap.id}')">🗑️ Löschen</button>
-    `;
+    const b=docSnap.data();
+    const div=document.createElement("div");
+    div.className="brainrot-admin"+(b.stock===0?" outofstock":"");
+    div.innerHTML=`<strong>${b.name}</strong> | Rarity: ${b.rarity} | Stock: <input type="number" value="${b.stock}" id="stock-${docSnap.id}">
+    <br>Bild URL: <input type="text" value="${b.imageUrl||''}" id="img-${docSnap.id}">
+    <br>
+    <button onclick="updateBrainrot('${docSnap.id}')">💾 Speichern</button>
+    <button onclick="deleteBrainrot('${docSnap.id}')">🗑️ Löschen</button>`;
     brainrotsListDiv.appendChild(div);
   });
 }
 
-// Brainrot bearbeiten
-window.updateBrainrot = async (id)=>{
-  const stock = parseInt(document.getElementById(`stock-${id}`).value)||0;
-  const img = document.getElementById(`img-${id}`).value.trim();
+window.updateBrainrot=async(id)=>{
+  const stock=parseInt(document.getElementById(`stock-${id}`).value)||0;
+  const img=document.getElementById(`img-${id}`).value.trim();
   await updateDoc(doc(db,"brainrots",id),{stock,img});
-  alert("✅ Brainrot aktualisiert!");
-  ladeBrainrots();
+  loadBrainrots();
 }
+window.deleteBrainrot=async(id)=>{ await deleteDoc(doc(db,"brainrots",id)); loadBrainrots(); }
 
-// Brainrot löschen
-window.deleteBrainrot = async(id)=>{
-  if(confirm("Willst du diesen Brainrot wirklich löschen?")){
-    await deleteDoc(doc(db,"brainrots",id));
-    alert("✅ Brainrot gelöscht!");
-    ladeBrainrots();
-  }
-}
-
-// ======================
+// ====================
 // Offers Funktionen
-// ======================
+// ====================
 
-async function ladeOffers(){
+async function loadOffers(){
   offersDiv.innerHTML="Lade...";
-  const snapshot = await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc")));
+  const snapshot=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc")));
   offersDiv.innerHTML="";
-  if(snapshot.empty){ offersDiv.innerHTML="Keine Angebote."; return; }
   snapshot.forEach(docSnap=>{
-    const o = docSnap.data();
-    const div = document.createElement("div");
+    const o=docSnap.data();
+    const div=document.createElement("div");
     div.className="offer-admin";
-    let icon="🕒";
-    if(o.status==="accepted") icon="✅";
-    else if(o.status==="rejected") icon="❌";
-    else if(o.status==="done") icon="🎉";
-    div.innerHTML = `
-      ${icon} <strong>${o.brainrotName}</strong> von ${o.fromEmail}<br>
-      Roblox: ${o.robloxUsername}<br>
-      Angebot: ${o.offerText}<br>
-      Status: <select id="status-${docSnap.id}">
-        <option value="pending" ${o.status==="pending"?"selected":""}>pending</option>
-        <option value="accepted" ${o.status==="accepted"?"selected":""}>accepted</option>
-        <option value="rejected" ${o.status==="rejected"?"selected":""}>rejected</option>
-        <option value="done" ${o.status==="done"?"selected":""}>done</option>
-      </select>
-      <br><button onclick="updateOfferStatus('${docSnap.id}')">💾 Speichern</button>
-      <button onclick="deleteOffer('${docSnap.id}')">🗑️ Löschen</button>
-    `;
+    div.innerHTML=`<strong>${o.brainrotName}</strong> von ${o.fromEmail}<br>Roblox: ${o.robloxUsername}<br>Angebot: ${o.offerText}<br>Status: ${o.status||"pending"}<br>
+    <button class="status-btn" onclick="updateOffer('${docSnap.id}','accepted')">✅ Akzeptieren</button>
+    <button class="status-btn" onclick="updateOffer('${docSnap.id}','rejected')">❌ Ablehnen</button>
+    <button class="status-btn" onclick="updateOffer('${docSnap.id}','done')">🎉 Fertig</button>
+    <button class="status-btn" onclick="deleteOffer('${docSnap.id}')">🗑️ Löschen</button>`;
     offersDiv.appendChild(div);
   });
 }
 
-// Offer Status aktualisieren
-window.updateOfferStatus = async(id)=>{
-  const status = document.getElementById(`status-${id}`).value;
-  await updateDoc(doc(db,"offers",id),{status});
-  ladeOffers();
-}
+window.updateOffer=async(id,status)=>{ await updateDoc(doc(db,"offers",id),{status}); loadOffers(); }
+window.deleteOffer=async(id)=>{ await deleteDoc(doc(db,"offers",id)); loadOffers(); }
 
-// Offer löschen
-window.deleteOffer = async(id)=>{
-  if(confirm("Willst du dieses Angebot löschen?")){
-    await deleteDoc(doc(db,"offers",id));
-    ladeOffers();
-  }
+// ====================
+// Initial Load
+// ====================
+async function loadAll(){
+  loadBrainrots();
+  loadOffers();
 }
-
 </script>
+
 </body>
 </html>
