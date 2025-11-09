@@ -34,8 +34,14 @@
   <button id="add-btn">➕ Brainrot hinzufügen</button>
   <div id="brainrot-list">Lade Brainrots...</div>
 
-  <h2>Angebote verwalten</h2>
-  <div id="offers-list">Lade Angebote...</div>
+  <h2>Offene Angebote</h2>
+  <div id="offers-pending">Lade...</div>
+
+  <h2>Akzeptierte Angebote</h2>
+  <div id="offers-accepted">Lade...</div>
+
+  <h2>Erledigte Angebote</h2>
+  <div id="offers-done">Lade...</div>
 </div>
 
 <script type="module">
@@ -73,7 +79,9 @@ const rarityInput=document.getElementById("rarity");
 const addBtn=document.getElementById("add-btn");
 
 const brainrotList=document.getElementById("brainrot-list");
-const offersList=document.getElementById("offers-list");
+const offersPending=document.getElementById("offers-pending");
+const offersAccepted=document.getElementById("offers-accepted");
+const offersDone=document.getElementById("offers-done");
 
 let brainrotMap = {}; // Mapping ID → Name
 
@@ -118,7 +126,7 @@ onAuthStateChanged(auth,(user)=>{
   }
 });
 
-// Brainrots laden + Mapping erstellen
+// Brainrots laden
 async function ladeBrainrots(){
   brainrotList.innerHTML="Lade...";
   brainrotMap = {};
@@ -131,8 +139,8 @@ async function ladeBrainrots(){
     const div = document.createElement("div");
     div.className = "brainrot";
     div.innerHTML = `
-      <strong>Name:</strong> <span id="name-display-${docSnap.id}">${data.name}</span><br>
-      <strong>Rarity:</strong> <span id="rarity-display-${docSnap.id}">${data.rarity||'Unbekannt'}</span><br>
+      <strong>Name:</strong> ${data.name}<br>
+      <strong>Rarity:</strong> ${data.rarity||'Unbekannt'}<br>
       <img src="${data.imageUrl||'https://placehold.co/100x100'}" width="100"><br>
       <button onclick="editBrainrot('${docSnap.id}')">✏️ Bearbeiten</button>
       <button onclick="deleteBrainrot('${docSnap.id}')">🗑️ Löschen</button>
@@ -181,15 +189,16 @@ addBtn.addEventListener("click", async()=>{
   ladeBrainrots();
 });
 
-// Offers laden (pending only)
+// Offers laden nach Status
 async function ladeOffers(){
-  offersList.innerHTML="Lade...";
+  offersPending.innerHTML="Lade...";
+  offersAccepted.innerHTML="Lade...";
+  offersDone.innerHTML="Lade...";
   const snapshot = await getDocs(collection(db,"offers"));
-  offersList.innerHTML="";
+  offersPending.innerHTML=""; offersAccepted.innerHTML=""; offersDone.innerHTML="";
+
   snapshot.forEach(docSnap=>{
     const data = docSnap.data();
-    if(data.status !== "pending") return;
-
     const div=document.createElement("div");
     div.className="offer";
     div.innerHTML=`
@@ -197,20 +206,40 @@ async function ladeOffers(){
       <strong>Roblox Username:</strong> ${data.robloxUsername}<br>
       <strong>Angebot:</strong> ${data.offerText}<br>
       <strong>Brainrot:</strong> ${brainrotMap[data.brainrotId] || data.brainrotId}<br>
-      <button onclick="acceptOffer('${docSnap.id}')">✔️ Annehmen</button>
-      <button onclick="rejectOffer('${docSnap.id}')">❌ Ablehnen</button>
+      <strong>Status:</strong> ${data.status}<br>
     `;
-    offersList.appendChild(div);
+
+    // Buttons je nach Status
+    if(data.status==="pending"){
+      div.innerHTML += `
+        <button onclick="acceptOffer('${docSnap.id}')">✔️ Annehmen</button>
+        <button onclick="rejectOffer('${docSnap.id}')">❌ Ablehnen</button>
+      `;
+      offersPending.appendChild(div);
+    } 
+    else if(data.status==="accepted"){
+      div.innerHTML += `
+        <button onclick="markDone('${docSnap.id}')">✅ Fertig</button>
+      `;
+      offersAccepted.appendChild(div);
+    } 
+    else if(data.status==="done"){
+      offersDone.appendChild(div);
+    }
   });
 }
 
-// Angebot annehmen / ablehnen
+// Angebot annehmen / ablehnen / fertig
 window.acceptOffer = async function(id){
   await updateDoc(doc(db,"offers",id),{status:"accepted"});
   ladeOffers();
 }
 window.rejectOffer = async function(id){
   await updateDoc(doc(db,"offers",id),{status:"rejected"});
+  ladeOffers();
+}
+window.markDone = async function(id){
+  await updateDoc(doc(db,"offers",id),{status:"done"});
   ladeOffers();
 }
 </script>
