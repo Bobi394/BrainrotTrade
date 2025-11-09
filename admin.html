@@ -121,22 +121,48 @@ onAuthStateChanged(auth,(user)=>{
 // Brainrots laden + Mapping erstellen
 async function ladeBrainrots(){
   brainrotList.innerHTML="Lade...";
-  brainrotMap = {}; // reset
+  brainrotMap = {};
   const snapshot = await getDocs(collection(db,"brainrots"));
   brainrotList.innerHTML="";
   snapshot.forEach(docSnap=>{
     const data = docSnap.data();
-    brainrotMap[docSnap.id] = data.name; // Mapping ID → Name
+    brainrotMap[docSnap.id] = data.name;
+
     const div = document.createElement("div");
     div.className = "brainrot";
     div.innerHTML = `
-      <strong>${data.name}</strong><br>
+      <strong>Name:</strong> <span id="name-display-${docSnap.id}">${data.name}</span><br>
+      <strong>Rarity:</strong> <span id="rarity-display-${docSnap.id}">${data.rarity||'Unbekannt'}</span><br>
       <img src="${data.imageUrl||'https://placehold.co/100x100'}" width="100"><br>
-      Rarity: ${data.rarity||'Unbekannt'}<br>
+      <button onclick="editBrainrot('${docSnap.id}')">✏️ Bearbeiten</button>
       <button onclick="deleteBrainrot('${docSnap.id}')">🗑️ Löschen</button>
+      <div id="edit-container-${docSnap.id}" style="display:none; margin-top:5px;">
+        <input type="text" id="edit-name-${docSnap.id}" placeholder="Name" value="${data.name}">
+        <input type="text" id="edit-image-${docSnap.id}" placeholder="Bild URL" value="${data.imageUrl||''}">
+        <input type="text" id="edit-rarity-${docSnap.id}" placeholder="Rarity" value="${data.rarity||''}">
+        <button onclick="saveBrainrot('${docSnap.id}')">💾 Speichern</button>
+        <button onclick="cancelEdit('${docSnap.id}')">❌ Abbrechen</button>
+      </div>
     `;
     brainrotList.appendChild(div);
   });
+}
+
+window.editBrainrot = function(id){
+  document.getElementById(`edit-container-${id}`).style.display = "block";
+};
+
+window.cancelEdit = function(id){
+  document.getElementById(`edit-container-${id}`).style.display = "none";
+};
+
+window.saveBrainrot = async function(id){
+  const name = document.getElementById(`edit-name-${id}`).value.trim();
+  const img = document.getElementById(`edit-image-${id}`).value.trim();
+  const rarity = document.getElementById(`edit-rarity-${id}`).value.trim();
+  if(!name){ alert("Name darf nicht leer sein!"); return; }
+  await updateDoc(doc(db,"brainrots",id), {name, imageUrl: img, rarity});
+  ladeBrainrots();
 }
 
 window.deleteBrainrot=async function(id){
