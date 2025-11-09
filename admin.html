@@ -75,6 +75,8 @@ const addBtn=document.getElementById("add-btn");
 const brainrotList=document.getElementById("brainrot-list");
 const offersList=document.getElementById("offers-list");
 
+let brainrotMap = {}; // Mapping ID → Name
+
 // Login / Logout
 loginBtn.addEventListener("click", async()=>{
   try{
@@ -116,16 +118,18 @@ onAuthStateChanged(auth,(user)=>{
   }
 });
 
-// Brainrots laden
+// Brainrots laden + Mapping erstellen
 async function ladeBrainrots(){
   brainrotList.innerHTML="Lade...";
+  brainrotMap = {}; // reset
   const snapshot = await getDocs(collection(db,"brainrots"));
   brainrotList.innerHTML="";
   snapshot.forEach(docSnap=>{
-    const data=docSnap.data();
-    const div=document.createElement("div");
-    div.className="brainrot";
-    div.innerHTML=`
+    const data = docSnap.data();
+    brainrotMap[docSnap.id] = data.name; // Mapping ID → Name
+    const div = document.createElement("div");
+    div.className = "brainrot";
+    div.innerHTML = `
       <strong>${data.name}</strong><br>
       <img src="${data.imageUrl||'https://placehold.co/100x100'}" width="100"><br>
       Rarity: ${data.rarity||'Unbekannt'}<br>
@@ -166,7 +170,7 @@ async function ladeOffers(){
       <strong>E-Mail:</strong> ${data.fromEmail}<br>
       <strong>Roblox Username:</strong> ${data.robloxUsername}<br>
       <strong>Angebot:</strong> ${data.offerText}<br>
-      <strong>Brainrot ID:</strong> ${data.brainrotId}<br>
+      <strong>Brainrot:</strong> ${brainrotMap[data.brainrotId] || data.brainrotId}<br>
       <button onclick="acceptOffer('${docSnap.id}')">✔️ Annehmen</button>
       <button onclick="rejectOffer('${docSnap.id}')">❌ Ablehnen</button>
     `;
