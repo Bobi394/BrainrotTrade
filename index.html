@@ -102,7 +102,8 @@
           <img src="${data.imageUrl||'https://placehold.co/200x200'}">
           <h3>${data.name}</h3>
           <p>Rarity: ${data.rarity||'Unbekannt'}</p>
-          <input type="text" class="offer-input" placeholder="Dein Angebot..." id="offer-${docSnap.id}">
+          <input type="text" class="offer-input" placeholder="Dein Roblox Username" id="username-${docSnap.id}">
+          <input type="text" class="offer-input" placeholder="Dein Angebot" id="offer-${docSnap.id}">
           <button onclick="makeOffer('${docSnap.id}')">💬 Make Offer</button>
         `;
         brainrotContainer.appendChild(div);
@@ -112,13 +113,28 @@
     window.makeOffer = async function(brainrotId){
       const user = auth.currentUser;
       if(!user) return alert("Bitte einloggen!");
-      const input = document.getElementById(`offer-${brainrotId}`);
-      const angebot = input.value.trim();
-      if(!angebot) return alert("Bitte gib dein Angebot ein!");
+
+      const usernameInput = document.getElementById(`username-${brainrotId}`);
+      const offerInput = document.getElementById(`offer-${brainrotId}`);
+
+      const robloxUsername = usernameInput.value.trim();
+      const angebot = offerInput.value.trim();
+
+      if(!robloxUsername){ alert("Bitte Roblox Username eingeben!"); return; }
+      if(!angebot){ alert("Bitte gib dein Angebot ein!"); return; }
+
       await addDoc(collection(db,"offers"),{
-        brainrotId, fromUid:user.uid, fromEmail:user.email, offerText:angebot, status:"pending", createdAt:serverTimestamp()
+        brainrotId,
+        fromUid: user.uid,
+        fromEmail: user.email,
+        robloxUsername,
+        offerText: angebot,
+        status: "pending",
+        createdAt: serverTimestamp()
       });
-      input.value="";
+
+      usernameInput.value = "";
+      offerInput.value = "";
       alert("✅ Angebot gesendet!");
     };
   </script>
