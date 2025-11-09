@@ -57,10 +57,10 @@ h1 { margin-top:20px; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, query, where, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, query, where, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-const firebaseConfig = { /* dein config */ };
+const firebaseConfig = { /* Dein Firebase Config hier */ };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -76,9 +76,13 @@ const offersDiv=document.getElementById("offers");
 let brainrotCache={};
 
 // Registrierung
-registerBtn.addEventListener("click", async()=>{ try{ await createUserWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Registrierung erfolgreich!"); }catch(err){ alert("❌ "+err.message);} });
+registerBtn.addEventListener("click", async()=>{ 
+  try{ await createUserWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Registrierung erfolgreich!"); }catch(err){ alert("❌ "+err.message);} 
+});
 // Login
-loginBtn.addEventListener("click", async()=>{ try{ await signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Login erfolgreich!"); }catch(err){ alert("❌ "+err.message);} });
+loginBtn.addEventListener("click", async()=>{ 
+  try{ await signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Login erfolgreich!"); }catch(err){ alert("❌ "+err.message);} 
+});
 // Logout
 logoutBtn.addEventListener("click", async()=>{ await signOut(auth); });
 
@@ -137,14 +141,15 @@ async function sendOffer(id){
 async function ladeEigeneAngebote(){
   const user=auth.currentUser; if(!user) return;
   offersDiv.innerHTML="Lade...";
-  const q=query(collection(db,"offers"),where("fromEmail","==",user.email));
-  const snapshot=await getDocs(q);
+  const snapshot=await getDocs(collection(db,"offers"));
   if(snapshot.empty){ offersDiv.innerHTML="Keine Angebote."; return; }
   let html="";
   snapshot.forEach(docSnap=>{
     const o=docSnap.data();
-    let icon="🕒"; if(o.status==="accepted") icon="✅"; else if(o.status==="rejected") icon="❌"; else if(o.status==="done") icon="🎉";
-    html+=`<div style="border-bottom:1px solid #444; padding:5px;">${icon} <strong>${o.brainrotName}</strong><br><em>${o.offerText}</em><br>Roblox: ${o.robloxUsername}<br>Status: ${o.status||"pending"}${o.status==="done"?`<br><button onclick="deleteOffer('${docSnap.id}')">🗑️ Löschen</button>`:""}</div>`;
+    if(o.fromEmail===user.email){
+      let icon="🕒"; if(o.status==="accepted") icon="✅"; else if(o.status==="rejected") icon="❌"; else if(o.status==="done") icon="🎉";
+      html+=`<div style="border-bottom:1px solid #444; padding:5px;">${icon} <strong>${o.brainrotName}</strong><br><em>${o.offerText}</em><br>Roblox: ${o.robloxUsername}<br>Status: ${o.status||"pending"}${o.status==="done"?`<br><button onclick="deleteOffer('${docSnap.id}')">🗑️ Löschen</button>`:""}</div>`;
+    }
   });
   offersDiv.innerHTML=html;
 }
