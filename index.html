@@ -1,187 +1,104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>💸 Brainrot User Center</title>
-<style>
-body { font-family: Arial; background:#1b1b2a; color:#f5f5f5; text-align:center; }
-input, button, textarea { padding:8px; margin:5px; border-radius:5px; border:none; }
-button { cursor:pointer; background:#4e5efc; color:white; }
-button:hover { background:#6f7bff; }
-.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap:15px; justify-items:center; padding:15px; max-width:900px; margin:auto; }
-.brainrot { background:#2c2c44; padding:10px; border-radius:10px; width:90%; text-align:left; }
-img { border-radius:8px; display:block; margin:0 auto; }
-h1 { margin-top:20px; }
-#popup { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; }
-#popup-content { background:#2c2c44; padding:20px; border-radius:10px; width:90%; max-width:400px; text-align:center; }
-#offers { margin-top:30px; background:#2c2c44; padding:15px; border-radius:10px; max-width:600px; margin-inline:auto; text-align:left; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Trading Anfrage senden</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto;max-width:820px;margin:32px auto;padding:16px}
+    label{display:block;margin-top:12px}
+    input,textarea,button{width:100%;padding:8px;margin-top:6px}
+    #result{background:#f6f6f6;padding:10px;border-radius:8px;margin-top:10px;white-space:pre-line}
+    .hint{font-size:0.9rem;color:#666}
+    #copyBtn{margin-top:8px}
+  </style>
 </head>
 <body>
+  <h1>Trading Anfrage senden 📨🎮</h1>
+  <p class="hint">Gib deinen Roblox-Namen, was du bekommen willst und was du gibst. Nach dem Absenden bekommst du deine persönliche ID, mit der du später chatten kannst!</p>
 
-<h1>💸 Brainrot User Center 💸</h1>
+  <label>Roblox Name
+    <input id="robloxName" placeholder="z.B. CoolPlayer123" />
+  </label>
 
-<div id="user-info"></div>
+  <label>Was du möchtest
+    <input id="wants" placeholder="z.B. Six Seven" />
+  </label>
 
-<div id="auth-box">
-  <input type="email" id="email" placeholder="E-Mail">
-  <input type="password" id="password" placeholder="Passwort">
-  <button id="register-btn">Registrieren</button>
-  <button id="login-btn">Login</button>
-  <button id="logout-btn" style="display:none;">Logout</button>
-</div>
+  <label>Was du gibst
+    <input id="gives" placeholder="z.B. La Grande Combinasion" />
+  </label>
 
-<h2>🧠 Deine Brainrots</h2>
-<button id="create-brainrot-btn" style="display:none;">➕ Brainrot erstellen</button>
-<div id="brainrot-list" class="grid">Bitte einloggen...</div>
+  <label>Nachricht
+    <textarea id="message" rows="3" placeholder="Kurz etwas dazu..."></textarea>
+  </label>
 
-<div id="popup">
-  <div id="popup-content">
-    <h3 id="popup-name"></h3>
-    <img id="popup-img" width="150">
-    <p><em id="popup-rarity"></em></p>
-    <p><strong>Stock:</strong> <span id="popup-stock"></span></p>
-    <div id="offer-section">
-      <input type="text" id="popup-username" placeholder="Roblox Username"><br>
-      <textarea id="popup-offertext" placeholder="Dein Angebot" rows="2" cols="28"></textarea><br>
-      <button id="popup-send">📩 Angebot senden</button>
-    </div>
-    <button onclick="closePopup()">❌ Schließen</button>
-  </div>
-</div>
+  <button id="sendBtn">Anfrage senden ✉️</button>
+  <div id="result"></div>
 
-<h2>📜 Deine Angebote</h2>
-<div id="offers">Bitte anmelden...</div>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+    // Deine Firebase Config 🔥
+    const firebaseConfig = {
+      apiKey: "AIzaSyAJO1E-U1VCQRXlMjHUrP5312ozqH2gL6w",
+      authDomain: "traden-996a7.firebaseapp.com",
+      databaseURL: "https://traden-996a7-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "traden-996a7",
+      storageBucket: "traden-996a7.firebasestorage.app",
+      messagingSenderId: "891291590181",
+      appId: "1:891291590181:web:b3738e6144a685728d69cc",
+      measurementId: "G-2BT2JP06XH"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, query, where, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    const sendBtn = document.getElementById('sendBtn');
+    const resultDiv = document.getElementById('result');
+    let lastSent = 0; // Anti-Spam Timer
 
-// 🔑 Firebase Config (ersetze durch dein eigenes Projekt)
-const firebaseConfig = {
-  apiKey: "DEINE_API_KEY",
-  authDomain: "DEIN_PROJEKT.firebaseapp.com",
-  projectId: "DEIN_PROJEKT",
-  storageBucket: "DEIN_PROJEKT.appspot.com",
-  messagingSenderId: "DEIN_SENDER_ID",
-  appId: "DEIN_APP_ID"
-};
+    function genId(){
+      const a = crypto.getRandomValues(new Uint32Array(2));
+      return (a[0].toString(36)+a[1].toString(36)).slice(0,8);
+    }
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+    sendBtn.onclick = async ()=>{
+      const now = Date.now();
+      if (now - lastSent < 30000) { // 30 Sekunden Cooldown
+        alert("⏳ Bitte warte etwas, bevor du eine neue Anfrage sendest!");
+        return;
+      }
 
-// Elemente
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const registerBtn = document.getElementById("register-btn");
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const userInfo = document.getElementById("user-info");
-const brainrotList = document.getElementById("brainrot-list");
-const offersDiv = document.getElementById("offers");
-const createBtn = document.getElementById("create-brainrot-btn");
+      const robloxName=document.getElementById('robloxName').value.trim();
+      const wants=document.getElementById('wants').value.trim();
+      const gives=document.getElementById('gives').value.trim();
+      const message=document.getElementById('message').value.trim();
+      if(!robloxName||!wants||!gives){
+        alert('Bitte alle Felder ausfüllen!');
+        return;
+      }
 
-let brainrotCache = {};
+      const id=genId();
+      const data={id,createdAt:Date.now(),robloxName,wants,gives,message,status:'pending'};
+      await db.ref('requests/'+id).set(data);
+      lastSent = now;
 
-// Registrierung & Login
-registerBtn.onclick = async () => { try { await createUserWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Registrierung erfolgreich!"); } catch(e){alert(e.message);} };
-loginBtn.onclick = async () => { try { await signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value); alert("✅ Login erfolgreich!"); } catch(e){alert(e.message);} };
-logoutBtn.onclick = async () => { await signOut(auth); };
+      const redeemLink = "https://bobi394.github.io/traden/reedem.html"; // Dein echter Link
+      resultDiv.innerHTML = `
+        ✅ <b>Anfrage gesendet!</b><br><br>
+        <b>Deine Anfrage-ID:</b> <span id="idText">${id}</span><br>
+        <button id="copyBtn">📋 ID kopieren</button><br><br>
+        🔗 <b>Chat-Seite:</b> <a href="${redeemLink}" target="_blank">${redeemLink}</a><br><br>
+        💡 Speichere deine ID gut ab! Du brauchst sie, wenn deine Anfrage akzeptiert wurde.
+      `;
 
-// Auth-State
-onAuthStateChanged(auth,user=>{
-  if(user){
-    userInfo.textContent=`👤 Eingeloggt als: ${user.email}`;
-    emailInput.style.display=passwordInput.style.display=loginBtn.style.display=registerBtn.style.display="none";
-    logoutBtn.style.display="inline-block";
-    createBtn.style.display="inline-block";
-    ladeBrainrots();
-    ladeEigeneAngebote();
-  } else {
-    userInfo.textContent="Nicht eingeloggt";
-    emailInput.style.display=passwordInput.style.display=loginBtn.style.display=registerBtn.style.display="inline-block";
-    logoutBtn.style.display=createBtn.style.display="none";
-    brainrotList.innerHTML="Bitte einloggen...";
-    offersDiv.innerHTML="Bitte anmelden...";
-  }
-});
-
-// Brainrot erstellen/bearbeiten
-createBtn.onclick = () => openBrainrotCreator();
-
-async function openBrainrotCreator(existingId=null,existingData=null){
-  const name = prompt("Name:",existingData?.name||""); if(!name) return;
-  const rarity = prompt("Rarity:",existingData?.rarity||"Common");
-  const imageUrl = prompt("Bild URL:",existingData?.imageUrl||"https://placehold.co/120x120");
-  const stock = parseInt(prompt("Stock:",existingData?.stock||1));
-  const user = auth.currentUser; if(!user) return alert("Bitte einloggen!");
-  if(existingId){ await updateDoc(doc(db,"brainrots",existingId),{name,rarity,imageUrl,stock}); alert("✅ Brainrot aktualisiert!"); } 
-  else{ await addDoc(collection(db,"brainrots"),{name,rarity,imageUrl,stock,createdBy:user.email}); alert("✅ Brainrot erstellt!"); }
-  ladeBrainrots();
-}
-
-// Lade Brainrots
-async function ladeBrainrots(){
-  const user = auth.currentUser;
-  const snapshot = await getDocs(collection(db,"brainrots"));
-  brainrotList.innerHTML="";
-  snapshot.forEach(docSnap=>{
-    const data=docSnap.data();
-    brainrotCache[docSnap.id]=data.name;
-    const isOwner = data.createdBy===user.email;
-    const div=document.createElement("div");
-    div.className="brainrot";
-    div.innerHTML=`
-      <strong>${data.name}</strong><br>
-      <em>${data.rarity}</em><br>
-      <img src="${data.imageUrl}" width="120"><br>
-      <button onclick="openPopup('${docSnap.id}','${data.name}','${data.imageUrl}','${data.rarity}','${data.stock}')">ℹ️ Details</button>
-      ${isOwner?`<button onclick="openBrainrotCreator('${docSnap.id}',${JSON.stringify(data)})">✏️ Bearbeiten</button>`:""}
-      ${isOwner?`<button onclick="deleteBrainrot('${docSnap.id}')">🗑️ Löschen</button>`:""}
-    `;
-    brainrotList.appendChild(div);
-  });
-}
-
-// Popup & Angebot
-window.openPopup=(id,name,img,rarity,stock)=>{
-  document.getElementById("popup").style.display="flex";
-  document.getElementById("popup-name").textContent=name;
-  document.getElementById("popup-img").src=img;
-  document.getElementById("popup-rarity").textContent=rarity;
-  document.getElementById("popup-stock").textContent=stock;
-  document.getElementById("popup-send").onclick=()=>sendOffer(id);
-};
-window.closePopup=()=>document.getElementById("popup").style.display="none";
-
-async function sendOffer(id){
-  const user=auth.currentUser; if(!user) return alert("Bitte einloggen!");
-  const username=document.getElementById("popup-username").value.trim();
-  const text=document.getElementById("popup-offertext").value.trim();
-  if(!username||!text) return alert("Bitte alles ausfüllen!");
-  const brainrotName=brainrotCache[id];
-  const snap=await getDocs(query(collection(db,"brainrots"),where("__name__","==",id)));
-  let createdBy=""; snap.forEach(s=>{createdBy=s.data().createdBy;});
-  await addDoc(collection(db,"offers"),{brainrotId:id,brainrotName,robloxUsername:username,offerText:text,fromEmail:user.email,toEmail:createdBy,status:"pending",createdAt:serverTimestamp()});
-  alert(`✅ Angebot gesendet!`);
-  closePopup(); ladeEigeneAngebote();
-}
-
-// Eigene Angebote laden
-async function ladeEigeneAngebote(){
-  const user=auth.currentUser; if(!user) return;
-  const q=query(collection(db,"offers"),where("toEmail","==",user.email));
-  const snapshot=await getDocs(q); if(snapshot.empty){ offersDiv.innerHTML="Keine Angebote."; return; }
-  let html=""; snapshot.forEach(d=>{const o=d.data(); html+=`<div style="border-bottom:1px solid #444;padding:5px;"><strong>${o.brainrotName}</strong><br>Von: ${o.fromEmail}<br>Roblox: ${o.robloxUsername}<br>Angebot: ${o.offerText}<br>Status: ${o.status}</div>`;});
-  offersDiv.innerHTML=html;
-}
-
-// Löschen
-window.deleteBrainrot=async id=>{if(confirm("Willst du diesen Brainrot löschen?")){await deleteDoc(doc(db,"brainrots",id));alert("🗑️ Gelöscht!"); ladeBrainrots();}};
-</script>
-
+      document.getElementById("copyBtn").onclick = () => {
+        const text = document.getElementById("idText").innerText;
+        navigator.clipboard.writeText(text);
+        document.getElementById("copyBtn").textContent = "✅ ID kopiert!";
+        setTimeout(() => document.getElementById("copyBtn").textContent = "📋 ID kopieren", 2000);
+      };
+    };
+  </script>
 </body>
 </html>
